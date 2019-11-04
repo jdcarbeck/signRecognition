@@ -20,7 +20,7 @@ using namespace cv::ml;
 // Best match must be 10% better than second best match
 #define REQUIRED_RATIO_OF_BEST_TO_SECOND_BEST 1.1
 // Located shape must overlap the ground truth by 80% to be considered a match
-#define REQUIRED_OVERLAP 0.6
+#define REQUIRED_OVERLAP 0.8
 
 
 class ObjectAndLocation
@@ -926,6 +926,7 @@ void ImageWithBlueSignObjects::AddSignObject(Mat img, Rect crop)
 		}
     }
 
+	//determine which corners are which using their reltive distance from orignal crop
 	float minSum = FLT_MAX;
 	float maxSum = FLT_MIN;
 	float minDiff = FLT_MAX;
@@ -953,16 +954,17 @@ void ImageWithBlueSignObjects::AddSignObject(Mat img, Rect crop)
 		}		
 	}
 
-
+	//take found corners and relate them to their position in original image
 	vector<Point2i> corners;
 	corners.push_back((Point2i)(crop.tl() + topLeft));
 	corners.push_back((Point2i)(crop.tl() + topRight));
 	corners.push_back((Point2i)(crop.tl() + botRight));
 	corners.push_back((Point2i)(crop.tl() + botLeft));
 
-
+	//space around image 
 	float offset = 0.1 * STANDARD_SIGN_WIDTH_AND_HEIGHT;
 
+	//geometrically transform image
 	Mat perspective_warped_image = Mat::zeros(STANDARD_SIGN_WIDTH_AND_HEIGHT, STANDARD_SIGN_WIDTH_AND_HEIGHT, image.type());
 	Mat perspective_matrix(3, 3, CV_32FC1);
 	Point2f source_points[4] = { {float(corners[0].x), float(corners[0].y)},  {float(corners[1].x), float(corners[1].y)}, {float(corners[2].x), float(corners[2].y)},  {float(corners[3].x),float(corners[3].y)} };
@@ -970,7 +972,7 @@ void ImageWithBlueSignObjects::AddSignObject(Mat img, Rect crop)
 	perspective_matrix = getPerspectiveTransform(source_points, destination_points);
 	warpPerspective(img_out, perspective_warped_image, perspective_matrix, perspective_warped_image.size());
 	
-
+	//add object if the contour are is close to the area of the bounding box
 	if(contourArea(corners)/crop.area() > .8){
 		addObject("", corners[0].x, corners[0].y, corners[1].x, corners[1].y, 
 						corners[2].x, corners[2].y, corners[3].x, corners[3].y, perspective_warped_image);
@@ -983,15 +985,11 @@ void ImageWithBlueSignObjects::AddSignObject(Mat img, Rect crop)
 
 void ImageWithBlueSignObjects::LocateAndAddAllObjects(AnnotatedImages& training_images)
 {
-	// *** Student needs to develop this routine and add in objects using the addObject method
-	//TODO: Geometric Transformation and 
 	cout << "Detecting Objects for " << filename << endl;
 	Mat img, colourMat, output;
 	output = image.clone();
 	
 	//original: Red colour channel, brightness -50, threshold 60
-
-
 	//analyse the red channel and threshold
 	image.convertTo(colourMat, -1, 1, -50);
 	vector<Mat> channels(3);
@@ -1006,8 +1004,7 @@ void ImageWithBlueSignObjects::LocateAndAddAllObjects(AnnotatedImages& training_
 	int morph_size = 2;
 	Mat element = getStructuringElement( MORPH_RECT, Size( 2*morph_size + 1, 2*morph_size+1 ), Point( morph_size, morph_size ) );
 	morphologyEx(img, img, MORPH_OPEN, element, Point(-1,-1), 3 ); 
-	
-	// colourMat = img.clone();	
+
 	
 	//find egdes
 	Canny(img, img, 150, 255, 3);
@@ -1035,15 +1032,14 @@ void ImageWithBlueSignObjects::LocateAndAddAllObjects(AnnotatedImages& training_
 		area = boundRect[i].area();
 		coverage = ((contourArea(contours[i])) / area);
 		
-		if( (coverage > 0.6) && (area > 10000) && (hierarchy[i][2] != -1) && (hierarchy[i][3] == -1)){
-
+		if( (coverage > 0.6) && (area > 5000) && (hierarchy[i][2] != -1) && (hierarchy[i][3] == -1)){
 			Rect crop = boundRect[i];
 			AddSignObject(output, crop);	
 		}
 		
     }
 	
-	
+	//Reconise each found object against training images, set the name of the object based off the best match
 	for(size_t i = 0; i < objects.size(); i++){
 		double min_val = 1;
 		string bestMatch = "Unknown";
@@ -1053,7 +1049,7 @@ void ImageWithBlueSignObjects::LocateAndAddAllObjects(AnnotatedImages& training_
 
 		vector<ImageWithObjects*> imgWithObj = training_images.annotated_images;
 
-
+		//for each training image compare
 		for(size_t j = 0; j < imgWithObj.size(); j++){
 			ImageWithObjects* img = imgWithObj[j];
 		
@@ -1086,11 +1082,8 @@ void ObjectAndLocation::FeatureVector(vector<Point2f>& features){
 	split(image, channels);
 	img = channels[2];
 	bitwise_not(img, img);
-	// threshold(img, img, 200, 255,THRESH_BINARY);
 	threshold(img, img, 100, 255, THRESH_BINARY);
 	
-	
-	// Morpholody to clean the image for edge detection
 	int morph_size = 2;
 	Mat element = getStructuringElement( MORPH_RECT, Size( 2*morph_size + 1, 2*morph_size+1 ), Point( morph_size, morph_size ) );
 	morphologyEx(img, img, MORPH_OPEN, element, Point(-1,-1), 3 );
@@ -1122,30 +1115,32 @@ void ObjectAndLocation::FeatureVector(vector<Point2f>& features){
 #define BAD_MATCHING_VALUE 1000000000.0;
 double ObjectAndLocation::compareObjects(ObjectAndLocation* otherObject)
 {
-	// *** Student should write code to compare objects using chosen method.
-	// Please bear in mind that ImageWithObjects::FindBestMatch assumes that the lower the value the better.  Feel free to change this.
 	ObjectAndLocation obj = *otherObject;
 	Mat img = obj.image.clone();
 	Mat templ = image.clone();
 
-
 	Mat matching_space;
+
+	//the image has a sign area of around .90 thus scale template and search for best match
 	double factor = 0.80;
 	double maxFactor = 1.00;
 	double threshold = 0.9;
 	double lowestVal = threshold;
 	while(factor <= maxFactor){
 		Mat scale_template;
+		//resize image based off factor
 		resize(templ, scale_template, Size(0,0), factor, factor, INTER_AREA);
 		matching_space.create(img.cols - scale_template.cols + 1, img.rows-scale_template.cols + 1, CV_32FC1);
 		matchTemplate(img, scale_template, matching_space, CV_TM_SQDIFF_NORMED);
 		double minVal; double maxVal; Point minLoc; Point maxLoc;
 		Point matchLoc;
+
 		minMaxLoc( matching_space, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
+
+		//set the lowestVal if minval is lower and interate scaling factor
 		if(minVal < lowestVal) lowestVal = minVal;
 		factor += 0.01;
 	}
-
 	if(lowestVal >= threshold) return BAD_MATCHING_VALUE;
 	return lowestVal;
 }
