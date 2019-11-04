@@ -20,25 +20,7 @@ using namespace cv::ml;
 // Best match must be 10% better than second best match
 #define REQUIRED_RATIO_OF_BEST_TO_SECOND_BEST 1.1
 // Located shape must overlap the ground truth by 80% to be considered a match
-#define REQUIRED_OVERLAP 0.8
-
-#define COFFEE 1
-#define LIFT 2
-#define EXIT 3
-#define ONE 4
-#define TWO 5
-#define STAIRS 6
-#define INFORMATION 7
-#define TICKETDESK 8
-#define DISABLED 9
-#define ESCALATOR 10
-#define GENTS 11
-#define LADIES 12
-#define UNKNOWN 13
-
-Ptr<SVM> svm;
-vector<vector<float>> trainingVector;
-vector<int> labels;
+#define REQUIRED_OVERLAP 0.6
 
 
 class ObjectAndLocation
@@ -554,6 +536,7 @@ void MyApplication()
 
 	Mat images_mat = trainingImages.getImageOfAllObjects();
 	imshow("training_images", images_mat);
+	waitKey(0);
 }
 
 bool PointInPolygon(Point2i point, vector<Point2i> vertices)
@@ -885,8 +868,6 @@ void ConfusionMatrix::Print()
 }
 
 
-
-
 void ObjectAndLocation::setImage(Mat object_image)
 {
 	image = object_image.clone();
@@ -1071,10 +1052,7 @@ void ImageWithBlueSignObjects::LocateAndAddAllObjects(AnnotatedImages& training_
 		objects[i].setFeatures(features);
 
 		vector<ImageWithObjects*> imgWithObj = training_images.annotated_images;
-		// for(size_t i = 0; i < imageSet.size(); i++){
 
-		// 	ImageWithObjects* img_objects = (imageSet[i]);
-		// 	vector<ObjectAndLocation> obj = (*img_objects).objects
 
 		for(size_t j = 0; j < imgWithObj.size(); j++){
 			ImageWithObjects* img = imgWithObj[j];
@@ -1082,41 +1060,16 @@ void ImageWithBlueSignObjects::LocateAndAddAllObjects(AnnotatedImages& training_
 				double matching_value = 1;
 				string name = objects[i].getName();
 				ObjectAndLocation* obj = &objects[i];
-				// extractAndSetObjectImage(obj);
+				
 				(*img).FindBestMatch(obj, name, matching_value);
 				if(matching_value < min_val){
 					min_val = matching_value;
 					bestMatch = name;
 				}
-			
-			
 		}
-
-
-
 		objects[i].setName(bestMatch);
 		cout << "Object found: " << bestMatch << endl;
-
-		// vector<float> feat = objects[i].getFeatures();
-		// for(int i=0; i<feat.size(); ++i)
-  		// 	cout << feat[i] << ' ';
-		// cout << endl;
-		
-	
-
-	//  Gonna have to hog and stm models
-
-	
-		// image set contains all the images that are identified
-
-		// 	cout << img_objects.objects.size()<< endl;
-		// 	// double matching_value;
-
-			// FindBestMatch(object, object.object_name, matching_value);
-		
 	}
-	
-	
 }
 
 vector<Point2f> ObjectAndLocation::getFeatures(){
@@ -1153,8 +1106,6 @@ void ObjectAndLocation::FeatureVector(vector<Point2f>& features){
 
     }
 
-	// double max_area = -1.0;
-	// int index = -1;
 	vector<Point2f> foundFeatures;
 	double count = 0.0;
 	for(size_t i = 0; i < contours.size(); i++ ){
@@ -1176,10 +1127,9 @@ double ObjectAndLocation::compareObjects(ObjectAndLocation* otherObject)
 	ObjectAndLocation obj = *otherObject;
 	Mat img = obj.image.clone();
 	Mat templ = image.clone();
-	
+
 
 	Mat matching_space;
-	//we know that the image is around 90 percent of the image, so template match between 0.5 -> 0.15
 	double factor = 0.80;
 	double maxFactor = 1.00;
 	double threshold = 0.9;
@@ -1195,54 +1145,12 @@ double ObjectAndLocation::compareObjects(ObjectAndLocation* otherObject)
 		if(minVal < lowestVal) lowestVal = minVal;
 		factor += 0.01;
 	}
-	// cout << object_name << " value: " << lowestVal << endl;
+
 	if(lowestVal >= threshold) return BAD_MATCHING_VALUE;
 	return lowestVal;
 }
 
-void test()
-{
-	AnnotatedImages trainingImages;
-	FileStorage training_file("BlueSignsTraining.xml", FileStorage::READ);
-	if (!training_file.isOpened())
-	{
-		cout << "Could not open the file: \"" << "BlueSignsTraining.xml" << "\"" << endl;
-	}
-	else
-	{
-		trainingImages.read(training_file);
-	}
-	training_file.release();
-	Mat image_of_all_training_objects = trainingImages.getImageOfAllObjects();
-	imshow("All Training Objects", image_of_all_training_objects);
-	imwrite("AllTrainingObjectImages.jpg", image_of_all_training_objects);
-	char ch = cv::waitKey(1);
-
-	AnnotatedImages unknownImages("Blue Signs/Training Originals");
-	unknownImages.LocateAndAddAllObjects(trainingImages);
-	FileStorage unknowns_file("BlueSignsTrainingTesting.xml", FileStorage::WRITE);
-	if (!unknowns_file.isOpened())
-	{
-		cout << "Could not open the file: \"" << "BlueSignsTrainingTesting.xml" << "\"" << endl;
-	}
-	else
-	{
-		unknownImages.write(unknowns_file);
-	}
-	unknowns_file.release();
-	Mat image_of_recognised_objects = unknownImages.getImageOfAllObjects();
-	imshow("All Recognised Objects", image_of_recognised_objects);
-	imwrite("AllRecognisedObjects.jpg", image_of_recognised_objects);
-
-
-	// ConfusionMatrix results(trainingImages);
-	// unknownImages.CompareObjectsWithGroundTruth(trainingImages, trainingImages, results);
-	// results.Print();
-}
-
-
 int main(int argc, char** argv){
 	MyApplication();
-	// test();
 	return 0;
 }
