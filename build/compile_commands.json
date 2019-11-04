@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/users/ugrad/carbeckj/Development/SS/CompVision/OpenCVExample/build",
+  "command": "/usr/bin/g++-7   -isystem /usr/include/opencv  -g   -o CMakeFiles/myApp.dir/MyApplication.cpp.o -c /users/ugrad/carbeckj/Development/SS/CompVision/OpenCVExample/MyApplication.cpp",
+  "file": "/users/ugrad/carbeckj/Development/SS/CompVision/OpenCVExample/MyApplication.cpp"
+},
+{
+  "directory": "/users/ugrad/carbeckj/Development/SS/CompVision/OpenCVExample/build",
+  "command": "/usr/bin/g++-7   -isystem /usr/include/opencv  -g   -o CMakeFiles/myApp.dir/Utilities.cpp.o -c /users/ugrad/carbeckj/Development/SS/CompVision/OpenCVExample/Utilities.cpp",
+  "file": "/users/ugrad/carbeckj/Development/SS/CompVision/OpenCVExample/Utilities.cpp"
+}
+]

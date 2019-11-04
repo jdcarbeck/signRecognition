@@ -1,0 +1,47 @@
+1. Mean Shift is a good way to get the colour difference, blue should be a nice grouping to work with, possible issues with light.
+2. Connected components to identify the sign objects, we know that it will be a blue region with a white region then blue again and more white.
+
+
+
+MyApplication reads in training images into a annotated images objects
+MyApplciation reads in all the ground truth into a annotated images objects
+
+unknownImages of type AnnotatedImages //the images should be acessed through this object
+    calls LocateAndAddAllObjects(training Images)
+
+use getAnnotatedImage returns an ImageWithObjects
+    can add an object with an annotation
+    getObject returns a ObjectAndLocation
+        get image returns a mat&
+
+objects is a vector of ObjectAndLocation
+
+
+public:
+    ObjectAndLocation(string object_name, Point top_left, Point top_right, Point bottom_right, Point bottom_left, Mat object_image);
+	ObjectAndLocation(FileNode& node);
+	void write(FileStorage& fs);
+	void read(FileNode& node);
+	Mat& getImage();
+	string getName();
+	void setName(string new_name);
+	string getVerticesString();
+	void DrawObject(Mat* display_image, Scalar& colour);
+	double getMinimumSideLength();
+	double getArea();
+	void getVertice(int index, int& x, int& y);
+	void setImage(Mat image);   // *** Student should add any initialisation (of their images or features; see private data below) they wish into this method.
+	double compareObjects(ObjectAndLocation* otherObject);  // *** Student should write code to compare objects using chosen method.
+	bool OverlapsWith(ObjectAndLocation* other_object);
+private:
+	string object_name;
+	Mat image;
+	vector<Point2i> vertices;
+	// *** Student can add whatever images or features they need to describe the object.
+
+
+Inital approach was to do k-means for clustering but issues with lighting
+First step was to get segments of the image to reconise
+
+
+tweaking the threshold values on the hls and greyscale image futher work need to be done
