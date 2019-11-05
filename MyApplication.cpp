@@ -904,38 +904,50 @@ void ObjectAndLocation::setImage(Mat object_image)
 void ImageWithBlueSignObjects::AddSignObject(Mat img, Rect crop)
 {
 	// Fix the croping of blue signs with new thresholding.
+	
+
 
 	Mat sign = img(crop);
 	Mat img_out = img.clone();
 	Mat colourSign = img(crop);
 
-	Scalar colour(0x00, 0x00, 0xff);
-	copyMakeBorder(colourSign, colourSign, 10, 10, 10, 10, BORDER_CONSTANT, colour);
+	// Scalar colour(0x00, 0x00, 0xff);
+	// copyMakeBorder(colourSign, colourSign, 10, 10, 10, 10, BORDER_CONSTANT, colour);
 
-	vector<Mat> channels(3);
-	split(colourSign, channels);
-	img = channels[2];
-	threshold(img, img, 245, 255, THRESH_BINARY_INV | THRESH_OTSU);
+	// vector<Mat> channels(3);
+	// split(colourSign, channels);
+	// img = channels[2];
+	// threshold(img, img, 245, 255, THRESH_BINARY_INV | THRESH_OTSU);
 
-	int morph_size = 2;
-	Mat element = getStructuringElement(MORPH_RECT, Size(2 * morph_size + 1, 2 * morph_size + 1), Point(morph_size, morph_size));
-	morphologyEx(img, img, MORPH_OPEN, element, Point(-1, -1), 2);
+	// int morph_size = 2;
+	// Mat element = getStructuringElement(MORPH_RECT, Size(2 * morph_size + 1, 2 * morph_size + 1), Point(morph_size, morph_size));
+	// morphologyEx(img, img, MORPH_OPEN, element, Point(-1, -1), 2);
 
-	Canny(img, img, 200, 255, 3);
+	Canny(sign, img, 50, 255, 3);
 
 	//using contours define a aproxpoloy to descript sign outline
 	vector<vector<Point>> contours;
 	vector<Vec4i> hierarchy;
 	findContours(img, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
 	vector<vector<Point2f>> approxPoly(contours.size());
+
+	double max_area = 0;
+	int index = 0;
+
 	for (size_t i = 0; i < contours.size(); i++)
 	{
-		if ((hierarchy[i][2] != -1) && (hierarchy[i][3] == -1))
-		{
+		// if ((hierarchy[i][2] != -1) && (hierarchy[i][3] == -1))
+		// {
 			double epsilon = .08 * arcLength(contours[i], true);
 			approxPolyDP(contours[i], approxPoly[i], epsilon, true);
-		}
+			double area = contourArea(contours[i]);
+			if(area > max_area){
+				max_area = area;
+				index = i;
+			}
+		// }
 	}
+	cout << max_area << " @ " << index << endl;
 
 	//using the apromiation of the bounds transform the image to a 100 x 100 square
 	float imageWidth = 100.0f;
@@ -943,17 +955,21 @@ void ImageWithBlueSignObjects::AddSignObject(Mat img, Rect crop)
 	Point2f dst_points[4] = {Point2f(1.0f, 1.0f), Point2f(imageWidth, 1.0f), Point2f(1.0f, imageHeight), Point2f(imageWidth, imageHeight)};
 	Point2f rect_points[4];
 
-	// find contour of larget area
-	for (size_t i = 0; i < contours.size(); i++)
-	{
-		if ((hierarchy[i][2] != -1) && (hierarchy[i][3] == -1))
-		{
+
+
+	// // find contour of larget area
+	// for (size_t i = 0; i < contours.size(); i++)
+	// {
+	// 	if ((hierarchy[i][2] != -1) && (hierarchy[i][3] == -1))
+	// 	{
+		if(max_area > 0){
 			for (int j = 0; j < 4; j++)
 			{
-				rect_points[j] = approxPoly[i][j];
+				rect_points[j] = approxPoly[index][j];
 			}
 		}
-	}
+	// 	}
+	// }
 
 	//determine which corners are which using their reltive distance from orignal crop
 	float minSum = FLT_MAX;
